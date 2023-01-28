@@ -1,0 +1,116 @@
+#! C:/Program Files/Nuke13.2v2/nuke-13.2.2.dll -nx
+version 13.2 v2
+define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
+<layout version="1.0">
+    <window x="0" y="0" w="2557" h="1360" screen="0">
+        <splitter orientation="1">
+            <split size="40"/>
+            <dock id="" hideTitles="1" activePageId="Toolbar.1">
+                <page id="Toolbar.1"/>
+            </dock>
+            <split size="1894" stretch="1"/>
+            <splitter orientation="2">
+                <split size="774"/>
+                <dock id="" activePageId="uk.co.thefoundry.scripteditor.1">
+                    <page id="Viewer.1"/>
+                    <page id="uk.co.thefoundry.scripteditor.1"/>
+                </dock>
+                <split size="544"/>
+                <dock id="" activePageId="DAG.1" focus="true">
+                    <page id="DAG.1"/>
+                    <page id="Curve Editor.1"/>
+                    <page id="DopeSheet.1"/>
+                </dock>
+            </splitter>
+            <split size="615"/>
+            <dock id="" activePageId="Properties.1">
+                <page id="Properties.1"/>
+                <page id="uk.co.thefoundry.backgroundrenderview.1"/>
+            </dock>
+        </splitter>
+    </window>
+</layout>
+}
+Root {
+ inputs 0
+ name D:/OneDrive/Resources/Nuke/Scripts/pong/pong_v5.nk
+ format "2048 1556 0 0 2048 1556 1 2K_Super_35(full-ap)"
+ proxy_type scale
+ proxy_format "1024 778 0 0 1024 778 1 1K_Super_35(full-ap)"
+ colorManagement Nuke
+ workingSpaceLUT linear
+ monitorLut sRGB
+ monitorOutLUT rec709
+ int8Lut sRGB
+ int16Lut sRGB
+ logLut Cineon
+ floatLut linear
+}
+BackdropNode {
+ inputs 0
+ name Game
+ tile_color 0x88803bff
+ label Game
+ xpos -47
+ ypos -76
+ bdwidth 1275
+ bdheight 998
+}
+BackdropNode {
+ inputs 0
+ name Player_1
+ label 0
+ note_font_size 40
+ xpos 1030
+ ypos 13
+ bdwidth 110
+ bdheight 79
+}
+BackdropNode {
+ inputs 0
+ name Player_2
+ label 0
+ note_font_size 40
+ xpos 1025
+ ypos 748
+ bdwidth 110
+ bdheight 79
+}
+BackdropNode {
+ inputs 0
+ name Pong
+ tile_color 0xff
+ xpos 0
+ bdwidth 1000
+ bdheight 850
+}
+NoOp {
+ inputs 0
+ name ______
+ xpos 450
+ ypos 825
+ hide_input true
+}
+NoOp {
+ inputs 0
+ name ________
+ xpos 450
+ ypos 28
+ hide_input true
+}
+NoOp {
+ inputs 0
+ name Play
+ xpos 1045
+ ypos 400
+ hide_input true
+ addUserKnob {20 Pong}
+ addUserKnob {22 play l Play T "\n\n\n\n\nnuke.menu(\"Nodes\").addCommand(\"Actions/Pong/left1\", \"baseLeft('________')\", 'a')\nnuke.menu(\"Nodes\").addCommand(\"Actions/Pong/right1\", \"baseRight('________')\", 'd')\nnuke.menu(\"Nodes\").addCommand(\"Actions/Pong/left2\", \"baseLeft('______')\", 'Left')\nnuke.menu(\"Nodes\").addCommand(\"Actions/Pong/right2\", \"baseRight('______')\", 'Right')\n\nbaseWidth = 80\nleftWall = 0\nrightWall = 1000\nplayerVel = 30\nplayer1 = \"________\"\nplayer2 = \"______\"\n\ndef baseLeft(player):\n    node = nuke.toNode(player)\n    node.setXpos(max(node.xpos() - playerVel, 0))\n\ndef baseRight(player):\n    node = nuke.toNode(player)\n    node.setXpos(min(node.xpos() + playerVel, rightWall - baseWidth))\n\nimport nuke\nimport time\nimport threading\nimport random\nimport math\n\nclass PongBall( threading.Thread ):\n        def __init__( self, ball, wallL, wallR, top, bottom, p1, p2, baseWidth):\n                threading.Thread.__init__( self )\n\n                self.ball = ball\n                self.wallL = wallL\n                self.wallR = wallR\n                self.top = top\n                self.bottom = bottom\n                self.randVel()\n                self.dt = 0.05\n                self.player1Name = p1\n                self.player2Name = p2\n                self.baseWidth = baseWidth\n\n        def randVel(self):\n            speed = 30\n            randAngle = random.uniform(0.06, 0.95)\n            if randAngle < 0.5 and randAngle > 0.45:\n                randAngle = randAngle - 0.05\n            elif randAngle < 0.55 and randAngle > 0.5:\n                randAngle = randAngle + 0.05\n            phi = 2*math.pi*randAngle\n            print(phi)\n            vx = speed * math.cos(phi)\n            vy = speed * math.sin(phi)\n            self.vel = \[vx, vy]\n\n        def initPos(self):\n            xposIni = self.wallR / 2\n            yposIni = self.bottom / 2\n            nuke.executeInMainThreadWithResult(self.ball.setXYpos, (int(xposIni), int(yposIni)))\n\n        #----------------------------------\n        def countDown(self):\n            time.sleep(0.5)\n\n\n        def player1Point(self):\n            p1cont = nuke.toNode(\"Player_1\")\n            points = int(p1cont.knob('label').value()) + 1\n            nuke.executeInMainThread(p1cont.knob('label').setValue, str(points))\n            self.randVel()\n            self.initPos()\n            self.countDown()\n\n        def player2Point(self):\n            p1cont = nuke.toNode(\"Player_2\")\n            points = int(p1cont.knob('label').value()) + 1\n            nuke.executeInMainThread(p1cont.knob('label').setValue, str(points))\n            self.randVel()\n            self.initPos()\n            self.countDown()\n            \n\n        def _update(self):\n            sourceX = self.ball.xpos()\n            sourceY = self.ball.ypos()\n            xpos = sourceX + (self.vel\[0])\n            ypos = sourceY + (self.vel\[1])\n\n            if xpos < self.wallL or xpos > self.wallR:\n                self.vel\[0] = -self.vel\[0]\n                xpos = sourceX + (self.vel\[0]*self.dt)\n                ypos = sourceY + (self.vel\[1]*self.dt)\n            elif ypos < (self.top + 50):\n                player1 = nuke.toNode(self.player1Name)\n                p1X = player1.xpos()\n                if xpos < p1X or xpos > (p1X + self.baseWidth):\n                    print(xpos)\n                    print(p1X)\n                    print(\"-------\")\n                    nuke.executeInMainThreadWithResult(self.ball.setXYpos, (int(xpos), int(ypos)))\n                    self.player2Point()\n                    return\n                self.vel\[1] = -self.vel\[1]\n                xpos = sourceX + (self.vel\[0])\n                ypos = sourceY + (self.vel\[1])\n            elif ypos > (self.bottom-30):\n                player2 = nuke.toNode(self.player2Name)\n                p2X = player2.xpos()\n                if xpos < p2X or xpos > (p2X + self.baseWidth):\n                    print(xpos)\n                    print(p2X)\n                    print(\"-------\")\n                    nuke.executeInMainThreadWithResult(self.ball.setXYpos, (int(xpos), int(ypos)))\n                    self.player1Point()\n                    return\n                self.vel\[1] = -self.vel\[1]\n                xpos = sourceX + (self.vel\[0])\n                ypos = sourceY + (self.vel\[1])\n            nuke.executeInMainThreadWithResult(self.ball.setXYpos, (int(xpos), int(ypos)))\n            #nuke.executeInMainThread(self.ball.setYpos, ypos)\n\n        #----------------------------------\n        def run( self ):\n            for i in range(0,1000):\n                self._update()\n                time.sleep(self.dt)\n\nPongBall(nuke.toNode(\"ball\"), leftWall, rightWall, 0, 850, player1, player2, baseWidth).start()" +STARTLINE}
+}
+Dot {
+ inputs 0
+ name ball
+ xpos 500
+ ypos 425
+ hide_input true
+}
